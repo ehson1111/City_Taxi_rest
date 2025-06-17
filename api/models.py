@@ -29,7 +29,11 @@ class Order(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
     pickup = models.CharField(max_length=100)
+    pickup_latitude = models.FloatField(null=True, blank=True)
+    pickup_longitude = models.FloatField(null=True, blank=True)
     destination = models.CharField(max_length=100)
+    destination_latitude = models.FloatField(null=True, blank=True)
+    destination_longitude = models.FloatField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     order_date = models.DateTimeField(default=timezone.now)
 
@@ -38,7 +42,11 @@ class Order(models.Model):
 
 class Poster(models.Model):
     from_location = models.CharField(max_length=100)
+    from_latitude = models.FloatField(null=True, blank=True)
+    from_longitude = models.FloatField(null=True, blank=True)
     to_location = models.CharField(max_length=100)
+    to_latitude = models.FloatField(null=True, blank=True)
+    to_longitude = models.FloatField(null=True, blank=True)
     price = models.FloatField()
     time_to_go = models.CharField(max_length=10)
     bags = models.IntegerField()
@@ -57,5 +65,3 @@ class Feedback(models.Model):
 
     def __str__(self):
         return f"Feedback for Order #{self.order.id}"
-    
-    

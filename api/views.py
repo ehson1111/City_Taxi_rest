@@ -1,5 +1,6 @@
-from datetime import timedelta
+from django.contrib.auth.models import User
 from django.utils import timezone
+from datetime import timedelta
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,8 +9,20 @@ from .serializers import (
     UserProfileSerializer, DriverSerializer, OrderSerializer,
     PosterSerializer, FeedbackSerializer
 )
-from django.contrib.auth.models import User
 from rest_framework import serializers
+import math
+
+def haversine(lat1, lon1, lat2, lon2):
+    """Ҳисоб кардани масофаи байни ду нуқта дар километр."""
+    if not all([lat1, lon1, lat2, lon2]):
+        return float('inf')  # Агар координатаҳо мавҷуд набошанд, масофаи беохир бармегардад
+    R = 6371.0  # Радиуси Замин дар километр
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+    c = 2 * math.asin(math.sqrt(a))
+    return R * c
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
@@ -80,16 +93,35 @@ class PosterViewSet(viewsets.ModelViewSet):
         queryset = Poster.objects.filter(is_active=True)
         from_location = self.request.query_params.get('from_location')
         to_location = self.request.query_params.get('to_location')
-        
+        latitude = self.request.query_params.get('latitude')
+        longitude = self.request.query_params.get('longitude')
+        max_distance = self.request.query_params.get('max_distance', 10)  # Масофаи пешфарз 10км
+
         if from_location:
             queryset = queryset.filter(from_location__icontains=from_location)
         if to_location:
             queryset = queryset.filter(to_location__icontains=to_location)
+        if latitude and longitude:
+            try:
+                user_lat = float(latitude)
+                user_lon = float(longitude)
+                max_distance = float(max_distance)
+                # Филтр кардани эълонҳо аз рӯи масофа бо формулаи Haversine
+                queryset = [
+                    poster for poster in queryset
+                    if haversine(user_lat, user_lon, poster.from_latitude, poster.from_longitude) <= max_distance
+                ]
+                # Тартиб додан аз рӯи масофа
+                queryset.sort(
+                    key=lambda p: haversine(user_lat, user_lon, p.from_latitude, p.from_longitude)
+                )
+            except (ValueError, TypeError):
+                pass  # Агар координатаҳо нодуруст бошанд, хато нодида гирифта мешавад
         return queryset
 
     def perform_create(self, serializer):
         if not hasattr(self.request.user, 'driver'):
-            raise serializers.ValidationError("Only drivers can create posters")
+            raise serializers.ValidationError("Фақат ронандагон метавонанд эълон эҷод кунанд")
         serializer.save(driver=self.request.user.driver)
 
     @action(detail=False, methods=['get'])
@@ -113,5 +145,5 @@ class FeedbackViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         order = serializer.validated_data['order']
         if order.user != self.request.user:
-            raise serializers.ValidationError("You can only give feedback for your own orders")
+            raise serializers.ValidationError("Шумо фақат барои фармоишҳои худ метавонед фикру мулоҳиза диҳед")
         serializer.save()

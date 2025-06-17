@@ -28,8 +28,11 @@ class OrderSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Order
-        fields = ['id', 'user', 'driver', 'pickup', 'destination', 
-                 'status', 'order_date']
+        fields = [
+            'id', 'user', 'driver', 'pickup', 'pickup_latitude', 'pickup_longitude',
+            'destination', 'destination_latitude', 'destination_longitude',
+            'status', 'order_date'
+        ]
         read_only_fields = ['order_date']
 
     def create(self, validated_data):
@@ -41,8 +44,11 @@ class PosterSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Poster
-        fields = ['id', 'from_location', 'to_location', 'price', 
-                 'time_to_go', 'bags', 'driver', 'is_active', 'creation_date']
+        fields = [
+            'id', 'from_location', 'from_latitude', 'from_longitude',
+            'to_location', 'to_latitude', 'to_longitude',
+            'price', 'time_to_go', 'bags', 'driver', 'is_active', 'creation_date'
+        ]
         read_only_fields = ['creation_date']
 
 class FeedbackSerializer(serializers.ModelSerializer):
@@ -55,5 +61,5 @@ class FeedbackSerializer(serializers.ModelSerializer):
 
     def validate_rating(self, value):
         if value < 1 or value > 5:
-            raise serializers.ValidationError("Rating must be between 1 and 5")
+            raise serializers.ValidationError("Рейтинг бояд байни 1 ва 5 бошад")
         return value
